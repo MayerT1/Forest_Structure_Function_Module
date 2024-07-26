@@ -2,38 +2,38 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-function randomForestParameterSpace(FeatureCollection, bandList, image, label, parameterSpace) {
+function randomForestParameterSpace(FeatureCollection, bandList, image, parameterSpace) {
     
   var split = 0.75;
   var training = FeatureCollection.filter(ee.Filter.lt('random', split));
   var testing = FeatureCollection.filter(ee.Filter.gte('random', split));
   
-  print('Total training samples', training.size());
+  // print('Total training samples', training.size());
   
-  print('Training Samples size', training.filter(ee.Filter.eq(label, 1)).size());
-  print('Training non foci samples size', training.filter(ee.Filter.eq(label, 0)).size());
-  print('Training: non foci ratio', training.filter(ee.Filter.eq(label, 1)).size().divide(training.filter(ee.Filter.eq(label, 0)).size()));
+  // print('Training Samples size', training.filter(ee.Filter.eq(label, 1)).size());
+  // print('Training non foci samples size', training.filter(ee.Filter.eq(label, 0)).size());
+  // print('Training: non foci ratio', training.filter(ee.Filter.eq(label, 1)).size().divide(training.filter(ee.Filter.eq(label, 0)).size()));
 
 
-  // Generate the histogram data.
-  var trainingHistogram = ui.Chart.feature.histogram({
-    features: training,
-    property: label,
-    maxBuckets: 2,
-  });
-  trainingHistogram.setOptions({
-    title: 'Histogram of Training Points'
-  });
+  // // Generate the histogram data.
+  // var trainingHistogram = ui.Chart.feature.histogram({
+  //   features: training,
+  //   property: label,
+  //   maxBuckets: 2,
+  // });
+  // trainingHistogram.setOptions({
+  //   title: 'Histogram of Training Points'
+  // });
   
-  print(trainingHistogram);
+  // print(trainingHistogram);
 
   
-  print();
-  print('Total testing samples', testing.size());
+  // print();
+  // print('Total testing samples', testing.size());
 
-  print('Testing Samples saize', testing.filter(ee.Filter.eq(label, 1)).size());
-  print('Testing non foci samples', testing.filter(ee.Filter.eq(label, 0)).size());
-  print('Testing: non foci ratio', testing.filter(ee.Filter.eq(label, 1)).size().divide(testing.filter(ee.Filter.eq(label, 0)).size()));
+  // print('Testing Samples saize', testing.filter(ee.Filter.eq(label, 1)).size());
+  // print('Testing non foci samples', testing.filter(ee.Filter.eq(label, 0)).size());
+  // print('Testing: non foci ratio', testing.filter(ee.Filter.eq(label, 1)).size().divide(testing.filter(ee.Filter.eq(label, 0)).size()));
 
   
   parameterSpace = ee.Dictionary(parameterSpace);
@@ -43,7 +43,8 @@ function randomForestParameterSpace(FeatureCollection, bandList, image, label, p
   var bagFraction = ee.List(parameterSpace.get('bagFraction'));
   var maxNodes = ee.List(parameterSpace.get('maxNodes'));
   var model_mode = ee.String(parameterSpace.get('model_mode'));
-  
+  var predict_label = ee.List(parameterSpace.get('predict_label'));
+
   var randomForests = numberOfTrees.map(function (_numberOfTrees) {
     
     return variablesPerSplit.map(function (_variablesPerSplit) {
@@ -54,62 +55,94 @@ function randomForestParameterSpace(FeatureCollection, bandList, image, label, p
           
           return maxNodes.map(function (_maxNodes) {
             
-            var rfModel = ee.Classifier.smileRandomForest({
-              numberOfTrees: _numberOfTrees,
-              variablesPerSplit: _variablesPerSplit,
-              minLeafPopulation: _minLeafPopulation,
-              bagFraction: _bagFraction,
-              maxNodes: _maxNodes,
-              seed: 7,
-            })
-            // .setOutputMode(model_mode)
-            .train({
-              features: training,
-              classProperty: label,
-              inputProperties: bandList,
-              subsamplingSeed: 7,
-            });
-            
-            var explainRF = rfModel.explain();
-            var importanceRF = ee.Dictionary(explainRF).get('importance');
+            return predict_label.map(function (_predict_label) { 
+              
+              
   
-            // Classify the test FeatureCollection.
-            var testingClassified = testing.classify(rfModel);
-          
-            // Confusion matrix.
-            var errorMatrix = testingClassified.errorMatrix(label, 'classification');
-            var testAcc = errorMatrix.accuracy();
-            var testKappa = errorMatrix.kappa();
-            var testRecallProducerAccuracy = errorMatrix.producersAccuracy().get([1, 0]);
-            var testPrecisionConsumerAccuracy = errorMatrix.consumersAccuracy().get([0, 1]);
-            var f1 = errorMatrix.fscore().get([1]);
+              // print('Training Samples size', training.filter(ee.Filter.eq(_predict_label, 1)).size());
+              // print('Training non foci samples size', training.filter(ee.Filter.eq(_predict_label, 0)).size());
+              // print('Training: non foci ratio', training.filter(ee.Filter.eq(_predict_label, 1)).size().divide(training.filter(ee.Filter.eq(_predict_label, 0)).size()));
+            
+            
+              // // Generate the histogram data.
+              // var trainingHistogram = ui.Chart.feature.histogram({
+              //   features: training,
+              //   property: _predict_label,
+              //   maxBuckets: 2,
+              // });
+              // trainingHistogram.setOptions({
+              //   title: 'Histogram of Training Points'
+              // });
+              
+              // print(trainingHistogram);
+            
+              
+              // print();
+              // print('Total testing samples', testing.size());
+            
+              // print('Testing Samples saize', testing.filter(ee.Filter.eq(_predict_label, 1)).size());
+              // print('Testing non foci samples', testing.filter(ee.Filter.eq(_predict_label, 0)).size());
+              // print('Testing: non foci ratio', testing.filter(ee.Filter.eq(_predict_label, 1)).size().divide(testing.filter(ee.Filter.eq(_predict_label, 0)).size()));
 
-            // Calculate RMSE
-            var calculateRmse = function(input) {
-                var observed = ee.Array(
-                  input.aggregate_array(label));
-                var predicted = ee.Array(
-                  input.aggregate_array('classification'));
-                var rmse = observed.subtract(predicted).pow(2)
-                  .reduce('mean', [0]).sqrt().get([0]);
-                return rmse;
-            };
-            var rmse = calculateRmse(testingClassified);
-
-            return ee.Feature(null, {
-              'model': 'RandomForest',
-              'numberOfTrees': _numberOfTrees,
-              'variablesPerSplit': _variablesPerSplit,
-              'minLeafPopulation': _minLeafPopulation,
-              'bagFraction': _bagFraction,
-              'maxNodes': _maxNodes,
-              'importance': importanceRF,
-              'testAccuracy': testAcc,
-              'testKappa': testKappa,
-              'precision': testPrecisionConsumerAccuracy,
-              'recall': testRecallProducerAccuracy,
-              'f1_score': f1,
-              'RMSE': rmse
+              
+              var rfModel = ee.Classifier.smileRandomForest({
+                numberOfTrees: _numberOfTrees,
+                variablesPerSplit: _variablesPerSplit,
+                minLeafPopulation: _minLeafPopulation,
+                bagFraction: _bagFraction,
+                maxNodes: _maxNodes,
+                seed: 7,
+              }).setOutputMode(model_mode)
+              .train({
+                features: training,
+                classProperty: _predict_label,
+                inputProperties: bandList,
+                subsamplingSeed: 7,
+                });
+                
+                var explainRF = rfModel.explain();
+                var importanceRF = ee.Dictionary(explainRF).get('importance');
+      
+                // Classify the test FeatureCollection.
+                var testingClassified = testing.classify(rfModel);
+              
+                // Confusion matrix.
+                var errorMatrix = testingClassified.errorMatrix(_predict_label, 'classification');
+                var testAcc = errorMatrix.accuracy();
+                var testKappa = errorMatrix.kappa();
+                var testRecallProducerAccuracy = errorMatrix.producersAccuracy().get([1, 0]);
+                var testPrecisionConsumerAccuracy = errorMatrix.consumersAccuracy().get([0, 1]);
+                var f1 = errorMatrix.fscore().get([1]);
+    
+                // Calculate RMSE
+                var calculateRmse = function(input) {
+                    var observed = ee.Array(
+                      input.aggregate_array(_predict_label));
+                    var predicted = ee.Array(
+                      input.aggregate_array('classification'));
+                    var rmse = observed.subtract(predicted).pow(2)
+                      .reduce('mean', [0]).sqrt().get([0]);
+                    return rmse;
+                };
+                var rmse = calculateRmse(testingClassified);
+    
+                return ee.Feature(null, {
+                  'model': 'RandomForest',
+                  'predict_label': _predict_label,
+                  'numberOfTrees': _numberOfTrees,
+                  'variablesPerSplit': _variablesPerSplit,
+                  'minLeafPopulation': _minLeafPopulation,
+                  'bagFraction': _bagFraction,
+                  'maxNodes': _maxNodes,
+                  'importance': importanceRF,
+                  'testAccuracy': testAcc,
+                  'testKappa': testKappa,
+                  'precision': testPrecisionConsumerAccuracy,
+                  'recall': testRecallProducerAccuracy,
+                  'f1_score': f1,
+                  'RMSE': rmse
+                });
+                
             });
           
           });
@@ -125,6 +158,138 @@ function randomForestParameterSpace(FeatureCollection, bandList, image, label, p
   return randomForests;
 
 }
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+////////////toggle back on as this is the working version Back stopped version (7/26/24)
+
+// function randomForestParameterSpace(FeatureCollection, bandList, image, label, parameterSpace) {
+    
+//   var split = 0.75;
+//   var training = FeatureCollection.filter(ee.Filter.lt('random', split));
+//   var testing = FeatureCollection.filter(ee.Filter.gte('random', split));
+  
+//   print('Total training samples', training.size());
+  
+//   print('Training Samples size', training.filter(ee.Filter.eq(label, 1)).size());
+//   print('Training non foci samples size', training.filter(ee.Filter.eq(label, 0)).size());
+//   print('Training: non foci ratio', training.filter(ee.Filter.eq(label, 1)).size().divide(training.filter(ee.Filter.eq(label, 0)).size()));
+
+
+//   // Generate the histogram data.
+//   var trainingHistogram = ui.Chart.feature.histogram({
+//     features: training,
+//     property: label,
+//     maxBuckets: 2,
+//   });
+//   trainingHistogram.setOptions({
+//     title: 'Histogram of Training Points'
+//   });
+  
+//   print(trainingHistogram);
+
+  
+//   print();
+//   print('Total testing samples', testing.size());
+
+//   print('Testing Samples saize', testing.filter(ee.Filter.eq(label, 1)).size());
+//   print('Testing non foci samples', testing.filter(ee.Filter.eq(label, 0)).size());
+//   print('Testing: non foci ratio', testing.filter(ee.Filter.eq(label, 1)).size().divide(testing.filter(ee.Filter.eq(label, 0)).size()));
+
+  
+//   parameterSpace = ee.Dictionary(parameterSpace);
+//   var numberOfTrees = ee.List(parameterSpace.get('numberOfTrees'));
+//   var variablesPerSplit = ee.List(parameterSpace.get('variablesPerSplit'));
+//   var minLeafPopulation = ee.List(parameterSpace.get('minLeafPopulation'));
+//   var bagFraction = ee.List(parameterSpace.get('bagFraction'));
+//   var maxNodes = ee.List(parameterSpace.get('maxNodes'));
+//   var model_mode = ee.String(parameterSpace.get('model_mode'));
+  
+//   var randomForests = numberOfTrees.map(function (_numberOfTrees) {
+    
+//     return variablesPerSplit.map(function (_variablesPerSplit) {
+      
+//       return minLeafPopulation.map(function (_minLeafPopulation) {
+        
+//         return bagFraction.map(function (_bagFraction) {
+          
+//           return maxNodes.map(function (_maxNodes) {
+            
+//             var rfModel = ee.Classifier.smileRandomForest({
+//               numberOfTrees: _numberOfTrees,
+//               variablesPerSplit: _variablesPerSplit,
+//               minLeafPopulation: _minLeafPopulation,
+//               bagFraction: _bagFraction,
+//               maxNodes: _maxNodes,
+//               seed: 7,
+//             })
+//             // .setOutputMode(model_mode)
+//             .train({
+//               features: training,
+//               classProperty: label,
+//               inputProperties: bandList,
+//               subsamplingSeed: 7,
+//             });
+            
+//             var explainRF = rfModel.explain();
+//             var importanceRF = ee.Dictionary(explainRF).get('importance');
+  
+//             // Classify the test FeatureCollection.
+//             var testingClassified = testing.classify(rfModel);
+          
+//             // Confusion matrix.
+//             var errorMatrix = testingClassified.errorMatrix(label, 'classification');
+//             var testAcc = errorMatrix.accuracy();
+//             var testKappa = errorMatrix.kappa();
+//             var testRecallProducerAccuracy = errorMatrix.producersAccuracy().get([1, 0]);
+//             var testPrecisionConsumerAccuracy = errorMatrix.consumersAccuracy().get([0, 1]);
+//             var f1 = errorMatrix.fscore().get([1]);
+
+//             // Calculate RMSE
+//             var calculateRmse = function(input) {
+//                 var observed = ee.Array(
+//                   input.aggregate_array(label));
+//                 var predicted = ee.Array(
+//                   input.aggregate_array('classification'));
+//                 var rmse = observed.subtract(predicted).pow(2)
+//                   .reduce('mean', [0]).sqrt().get([0]);
+//                 return rmse;
+//             };
+//             var rmse = calculateRmse(testingClassified);
+
+//             return ee.Feature(null, {
+//               'model': 'RandomForest',
+//               'numberOfTrees': _numberOfTrees,
+//               'variablesPerSplit': _variablesPerSplit,
+//               'minLeafPopulation': _minLeafPopulation,
+//               'bagFraction': _bagFraction,
+//               'maxNodes': _maxNodes,
+//               'importance': importanceRF,
+//               'testAccuracy': testAcc,
+//               'testKappa': testKappa,
+//               'precision': testPrecisionConsumerAccuracy,
+//               'recall': testRecallProducerAccuracy,
+//               'f1_score': f1,
+//               'RMSE': rmse
+//             });
+          
+//           });
+          
+//         });
+        
+//       });
+      
+//     });
+    
+//   });
+//   print("finished randomForestParameterSpace")
+//   return randomForests;
+
+// }
 
 
 
