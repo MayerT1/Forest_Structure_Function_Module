@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////
 //
-// Define model parameters and perform a prelimnary grid search/tuning  eoffrt to infor the final model settings/paramaters
+// Example RF tuning, classifcaiton and regression module for mapping forest strucure with GEDI
 // Author T. Mayer 5/24/24; NASA SERVIR, Univeristy of Alabama in Huntsville, and University of Twente ITC
 //
 //////////////////////////////////////////////////////////
@@ -15,7 +15,6 @@ var exportPath = 'users/tjm0042/PHD/KP_Height_Prelim2022';
 var importPath = 'projects/servir-sco-assets/assets/SCO_HKH/KP_Height_Prelim/'
 
 //////////////////////////////////////////////////////////
-
 
 // Construct the path to the exported images
 // var s2Composite = ee.Image(importPath + 'S2Composite_2022');
@@ -160,54 +159,52 @@ var year = 2022
 var bands = predictors
 var label = 'class'
 
-//////////////////////////////////////////////////////////
-
-// let's create the parameter space
-var numberOfTrees = ee.List.sequence(10, 11, 1);
-var variablesPerSplit = ee.List([null, bands.size()]);
-var minLeafPopulation = ee.List.sequence(1, 2, 1);
-var bagFraction = ee.List.sequence(0.5, 0.6, 0.1);
-var maxNodes = ee.List([null]);
-var model_mode = ee.String("REGRESSION"); //Beware this will run all stats so make sure you weigh the value/information
-//of the stat complementary to the mode running in CLASSIFICATION, REGRESSION, PROBABILITY, MULTIPROBABILITY, RAW, RAW_REGRESSION
-var predict_label = ee.List(predicted)
+////////////////////////////////////////////////////////////
 
 
+////////////////////////////////////////////////////////////////
+///
+///Run Classification RF
+///
+////////////////////////////////////////////////////////////////
 
-var parameterSpace = ee.Dictionary({
-  numberOfTrees: numberOfTrees,
-  variablesPerSplit: variablesPerSplit,
-  minLeafPopulation: minLeafPopulation,
-  bagFraction: bagFraction,
-  maxNodes: maxNodes,
-  model_mode: model_mode,
-  predict_label: predict_label
-});
+var parameter_post_tune = ee.Dictionary({
+  numberOfTrees: 100,
+  variablesPerSplit: 6,
+  minLeafPopulation: 5,
+  bagFraction: 0.3,
+  maxNodes: 8,
+}); //defaulted to "CLASSIFICATION" mode use other function for regression
 
-print("parameterSpace", parameterSpace)
+// var rf_model =  baseModule.randomForest_classification_model(training, bands, stackedResampled, label, parameter_post_tune)//FeatureCollection, bandList, image, label, parameters)
+// print(rf_model, {}, "rf_model")
 
+////////////////////////////////////////////////////////////////
+///
+///Run Regression RF
+///
+////////////////////////////////////////////////////////////////
 
-//label,
-var rfClassifiers = baseModule.randomForestParameterSpace(training, bands, stackedResampled, parameterSpace) // trainingSample, bands, finalImagery, label, parameterSpace);
-rfClassifiers = ee.FeatureCollection(rfClassifiers.flatten());
-print("Preliminary Grid search rfClassifiers base don parameterspace testing ", rfClassifiers)
+var string = 'rh100'
+/////
+var parameter_post_tune_reg = ee.Dictionary({
+  numberOfTrees: 100,
+  variablesPerSplit: 6,
+  minLeafPopulation: 5,
+  bagFraction: 0.3,
+  maxNodes: 8,
+  model_mode: "REGRESSION"
+}); 
 
+var rf_model_reg =  baseModule.randomForest_regression_model(training, bands, stackedResampled, label, string, parameter_post_tune_reg)//FeatureCollection, bandList, image, label, parameters)
+//print(rf_model_reg, {}, "rf_model_reg")
 
-var nRFModels = numberOfTrees.size().multiply(variablesPerSplit.size())
-                  .multiply(minLeafPopulation.size()).multiply(bagFraction.size())
-                  .multiply(maxNodes.size())//.multiply(predict_label.length());
-print('You are training ' + nRFModels.getInfo() + ' models. Brace Yourself!');
-
-// This is exported to your google drive in the earthengine folder
-Export.table.toDrive({
-  collection: rfClassifiers,
-  description: 'rf_models_' + label + '_' + year,
-  folder: 'earthengine',
-  fileNamePrefix: 'rf_models_' + label + '_' + year,
-  fileFormat: 'CSV'
-});
-
-var Regression_Predicted_Image_Prelim = stackedResampled.classify(rfClassifiers.first());
+//////////////////////////////////////////////////////////////////////
+//
+// Appy the example regression spatially
+//
+//////////////////////////////////////////////////////////////////////
+var Regression_Predicted_Image = stackedResampled.classify(rf_model_reg);
 
 var predictVis = {
   bands: ["classification"],
@@ -217,4 +214,16 @@ var predictVis = {
   palette: ["000000","f5fff4","83d982","24ca11"]
 };
 
-Map.addLayer(Regression_Predicted_Image_Prelim, predictVis, "Regression_Predicted_Image_Prelim")
+Map.addLayer(Regression_Predicted_Image, predictVis, "Regression_Predicted_Image")
+
+Export.image.toAsset({
+  image: Regression_Predicted_Image.clip(ROI),
+  description: 'Regression_Predicted_Image',
+  assetId: exportPath + 'XXXXXXXX',
+  region: ROI,
+  scale: gridScale,
+  maxPixels: 1e13
+});
+
+
+

@@ -14,7 +14,6 @@ Map.centerObject(ROI,12);
 var SA_prediction = ee.Image('projects/servir-sco-assets/assets/SCO_Global/SA_Rest/SA_Rest_Regression_Predicted_Image')
 Map.addLayer(SA_prediction, {}, "SA_prediction")
 
-
 //////////////////////////////////////////////////////////////////////
 //
 // Comparison Data
