@@ -18,5 +18,5 @@
 <!-- #![](Images/Book_Cover.png) -->
 
 <p align="center">
-  <img width="700" height="1100" src="https://github.com/MayerT1/Forest_Structure_Function_Module/blob/main/image/Prelim_Figure.png">
+  <img width="700" height="1100" src="https://github.com/MayerT1/Forest_Structure_Function_Module/blob/main/image/Prelim_8_2.png">
 </p>
