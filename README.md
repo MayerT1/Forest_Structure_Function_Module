@@ -19,5 +19,5 @@
 
 <p align="center">
 
-  <img width="700" height="900" src="https://github.com/MayerT1/Forest_Structure_Function_Module/blob/main/image/Prelim_Workflow_9_6_24.png">
+  <img width="700" height="900" src="https://github.com/MayerT1/Forest_Structure_Function_Module/blob/main/image/Prelim_Workflow.png">
 
