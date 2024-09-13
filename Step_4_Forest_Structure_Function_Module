@@ -1,14 +1,17 @@
 //////////////////////////////////////////////////////////
 //
-// Example RF tuning, classifcaiton and regression module for mapping forest strucure with GEDI
-// Author T. Mayer 5/24/24; NASA SERVIR, Univeristy of Alabama in Huntsville, and University of Twente ITC
+// Example RF tuning, classification and regression module for mapping forest strucure with GEDI
+// Author T. Mayer 9/13/24; NASA SERVIR, Univeristy of Alabama in Huntsville, and University of Twente ITC
 //
 //////////////////////////////////////////////////////////
 
 // var exportPath = 'users/tjm0042/PHD/GEDI_Height/';
-var ROI = ee.FeatureCollection("users/tjm0042/PHD/BTAP_P1")
-Map.addLayer(ROI, {}, 'ROI')
-//Map.centerObject(ROI,12);
+// var ROI = ee.FeatureCollection("users/tjm0042/PHD/BTAP_P1")
+// Map.addLayer(ROI, {}, 'ROI')
+// //Map.centerObject(ROI,12);
+
+var ROI = ee.Geometry.Rectangle([72.68095513823965,34.282270256791925, 72.83888360503653,34.406429412779026]) 
+Map.addLayer(ROI, {}, "ROI",false)
 
 var exportPath = 'users/tjm0042/PHD/KP_Height_Prelim2022';
 
@@ -126,26 +129,57 @@ Map.addLayer(classMask, {}, "classMask", false)
 print("classMask", classMask)
 
 //////////////////////////////////////////////////////////////////////////////////
-var numSamples = 1000;
-var numnonSamples = 500;
+
+var proj = S2indices_Clip.projection()
+var grid = ROI.coveringGrid(proj, 1000)
+grid = ee.FeatureCollection(grid).randomColumn("random", 42);
+print("spatial_partition number of boxes in the grid", grid.size())
+var val_samp = grid.filter('random <= 0.1').set("samp_type","val_samp");
+var test_samp = grid.filter('random <= 0.3 and random >= 0.1').set("samp_type","test_samp");
+var train_samp = grid.filter('random >= 0.3').set("samp_type","train_samp");
+
+print('val_samp 10%', val_samp.size());
+Map.addLayer(val_samp, {color: "blue"}, "val_samp 10%", false)
+
+print('test_samp 20%', test_samp.size());
+Map.addLayer(test_samp, {color: "red"}, "test_samp 20%", false)
+
+print('train_samp 70%', train_samp.size());
+Map.addLayer(train_samp, {color: "green"}, "train_samp 70%", false)
+
+
+function sample_partition(Image, Labeled_Image, total_samples, region, gridScale, numnonSamples, numSamples) {
+    var sample_partition_out = Image.addBands(Labeled_Image)
+    .stratifiedSample({
+      numPoints: total_samples,
+      classBand: 'class',
+      region: region, 
+      scale: gridScale,
+      seed: 42,
+      classValues: [0, 1],
+      classPoints: [numnonSamples, numSamples],  
+      dropNulls: true,
+      tileScale: 16,
+      geometries:true
+  }).randomColumn();
+return ee.FeatureCollection(sample_partition_out)
+}
+
+
+var numSamples = 2000;
+var numnonSamples = 2000;
 var total_samples = numSamples + numnonSamples
 print("total_samples", total_samples)
 /////
 
-var training = stackedResampled.addBands(classMask)
-  .stratifiedSample({
-    numPoints: total_samples,
-    classBand: 'class',
-    region: ROI,
-    scale: gridScale,
-    seed: 42,
-    classValues: [0, 1],
-    classPoints: [numnonSamples, numSamples],  
-    dropNulls: true,
-    tileScale: 16,
-}).randomColumn();
+var training = sample_partition(stackedResampled, classMask, total_samples, train_samp, gridScale, numSamples, numnonSamples)
+Map.addLayer(training, {color: "green"}, "training")
 
-print("training", training.first())
+var testing = sample_partition(stackedResampled, classMask, total_samples, test_samp, gridScale, numSamples, numnonSamples)
+Map.addLayer(testing, {color: "red"}, "testing")
+
+var validation = sample_partition(stackedResampled, classMask, total_samples, val_samp, gridScale, numSamples, numnonSamples)
+Map.addLayer(validation, {color: "blue"}, "validation")
 
 //////////////////////////////////////////////////////////////////
 /////
@@ -168,13 +202,13 @@ var label = 'class'
 ///
 ////////////////////////////////////////////////////////////////
 
-var parameter_post_tune = ee.Dictionary({
-  numberOfTrees: 100,
-  variablesPerSplit: 6,
-  minLeafPopulation: 5,
-  bagFraction: 0.3,
-  maxNodes: 8,
-}); //defaulted to "CLASSIFICATION" mode use other function for regression
+// var parameter_post_tune = ee.Dictionary({
+//   numberOfTrees: 100,
+//   variablesPerSplit: 6,
+//   minLeafPopulation: 5,
+//   bagFraction: 0.3,
+//   maxNodes: 8,
+// }); //defaulted to "CLASSIFICATION" mode use other function for regression
 
 // var rf_model =  baseModule.randomForest_classification_model(training, bands, stackedResampled, label, parameter_post_tune)//FeatureCollection, bandList, image, label, parameters)
 // print(rf_model, {}, "rf_model")
@@ -188,15 +222,16 @@ var parameter_post_tune = ee.Dictionary({
 var string = 'rh100'
 /////
 var parameter_post_tune_reg = ee.Dictionary({
-  numberOfTrees: 100,
+  numberOfTrees: 1000,
   variablesPerSplit: 6,
   minLeafPopulation: 5,
   bagFraction: 0.3,
   maxNodes: 8,
   model_mode: "REGRESSION"
 }); 
-
-var rf_model_reg =  baseModule.randomForest_regression_model(training, bands, stackedResampled, label, string, parameter_post_tune_reg)//FeatureCollection, bandList, image, label, parameters)
+/////randomForest_regression_model(FeatureCollection_train, FeatureCollection_test, bandList, image, label, string, parameters) {
+  
+var rf_model_reg =  baseModule.randomForest_regression_model(training, testing, bands, stackedResampled, label, string, parameter_post_tune_reg)// training//FeatureCollection, bandList, image, label, parameters)
 //print(rf_model_reg, {}, "rf_model_reg")
 
 //////////////////////////////////////////////////////////////////////
