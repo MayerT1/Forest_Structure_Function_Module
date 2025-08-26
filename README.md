@@ -11,6 +11,8 @@
 [![Colab](https://img.shields.io/badge/Google%20Colab-F9AB00.svg?style=for-the-badge&logo=Google-Colab&logoColor=white)](https://github.com/MayerT1/Forest_Structure_Function_Module/blob/main/Step_5_Forest_Structure_Function_Module_Python.ipynb)
 [![Pandas](https://img.shields.io/badge/pandas-150458.svg?style=for-the-badge&logo=pandas&logoColor=white)](https://github.com/MayerT1/Forest_Structure_Function_Module/blob/main/Step_5_Forest_Structure_Function_Module_Python.ipynb)
 
+https://doi.org/10.5281/zenodo.16953925
+
 <!-- https://home.aveek.io/GitHub-Profile-Badges/ -->
 
 <!-- [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/servir-aces.svg)](https://anaconda.org/conda-forge/servir-aces) -->
