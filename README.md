@@ -10,8 +10,8 @@
 [![Google Earth Engine](https://img.shields.io/badge/Google%20Earth%20Engine-4285F4.svg?style=for-the-badge&logo=Google-Earth-Engine&logoColor=white)](https://github.com/MayerT1/Forest_Structure_Function_Module/blob/main/Step_1_Forest_Structure_Function_Module)
 [![Colab](https://img.shields.io/badge/Google%20Colab-F9AB00.svg?style=for-the-badge&logo=Google-Colab&logoColor=white)](https://github.com/MayerT1/Forest_Structure_Function_Module/blob/main/Step_5_Forest_Structure_Function_Module_Python.ipynb)
 [![Pandas](https://img.shields.io/badge/pandas-150458.svg?style=for-the-badge&logo=pandas&logoColor=white)](https://github.com/MayerT1/Forest_Structure_Function_Module/blob/main/Step_5_Forest_Structure_Function_Module_Python.ipynb)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16953925.svg)](https://doi.org/10.5281/zenodo.16953925)
 
-https://doi.org/10.5281/zenodo.16953925
 
 <!-- https://home.aveek.io/GitHub-Profile-Badges/ -->
 
